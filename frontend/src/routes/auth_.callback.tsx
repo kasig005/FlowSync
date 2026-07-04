@@ -38,16 +38,34 @@ function AuthCallbackPage() {
     if (hasRun.current) return;
     hasRun.current = true;
 
+    // Shared fallback: if Xero didn't hand us something we can exchange (explicit
+    // denial, connection-limit bounce, missing/stale state, etc.) but the user is
+    // already signed in from a previous successful auth, don't treat this as a
+    // failure — just send them back in. Only show a real error if they're not
+    // already authenticated.
+    async function fallBackToExistingSession(reason: string) {
+      console.warn("⚠️ No usable code/state — checking for existing session. Reason:", reason);
+      const { data: existing } = await supabase.auth.getSession();
+      if (existing.session) {
+        toast.error("Xero didn't complete that action, but you're still signed in.");
+        navigate({ to: "/dashboard", replace: true });
+        return true;
+      }
+      return false;
+    }
+
     async function completeSignIn() {
       console.log("🟢 STARTING SIGN-IN PROCESS");
-      
+
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       const state = params.get("state");
       const errorParam = params.get("error");
 
       if (errorParam) {
-        console.error("❌ FAIL: Xero returned an explicit error parameter:", errorParam);
+        console.error("❌ Xero returned an explicit error parameter:", errorParam);
+        const handled = await fallBackToExistingSession(`error=${errorParam}`);
+        if (handled) return;
         setStatus("error");
         setErrorMessage(`Xero denied the request: ${errorParam}`);
         return;
@@ -55,16 +73,17 @@ function AuthCallbackPage() {
 
       const expectedState = sessionStorage.getItem("xero_oauth_state");
       console.log("🔍 STATE CHECK:", { urlState: state, sessionStorageState: expectedState });
-      
       sessionStorage.removeItem("xero_oauth_state");
 
       if (!code || !state || !expectedState || state !== expectedState) {
-        console.error("❌ FAIL: State mismatch or missing parameters", {
+        console.error("❌ State mismatch or missing parameters", {
           hasCode: !!code,
           hasState: !!state,
           hasExpectedState: !!expectedState,
-          statesMatch: state === expectedState
+          statesMatch: state === expectedState,
         });
+        const handled = await fallBackToExistingSession("missing or mismatched code/state");
+        if (handled) return;
         setStatus("error");
         setErrorMessage("Invalid or expired sign-in request. Please try again.");
         return;
@@ -80,13 +99,15 @@ function AuthCallbackPage() {
       });
 
       if (error || !data?.session) {
-        console.error("❌ FAIL: Supabase Edge Function error:", error || "No session returned in data");
+        console.error("❌ Supabase Edge Function error:", error || "No session returned in data");
+        const handled = await fallBackToExistingSession("edge function failed");
+        if (handled) return;
         setStatus("error");
         setErrorMessage(error?.message ?? "Could not complete Xero sign-in.");
         return;
       }
 
-      console.log("🚀 PASS: Edge function returned a session successfully. Setting Supabase session...", data.session);
+      console.log("🚀 PASS: Edge function returned a session. Setting Supabase session...");
 
       const { error: sessionError } = await supabase.auth.setSession({
         access_token: data.session.access_token,
@@ -94,7 +115,7 @@ function AuthCallbackPage() {
       });
 
       if (sessionError) {
-        console.error("❌ FAIL: supabase.auth.setSession failed:", sessionError.message);
+        console.error("❌ supabase.auth.setSession failed:", sessionError.message);
         setStatus("error");
         setErrorMessage(sessionError.message);
         return;
