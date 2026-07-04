@@ -8,51 +8,61 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Sign in — FlowSync" },
-      { name: "description", content: "Sign in or create your FlowSync account." },
+      { name: "description", content: "Sign in to your FlowSync account with Xero." },
       { name: "robots", content: "noindex" },
     ],
   }),
   component: AuthPage,
 });
 
+// Set these in your env (e.g. .env / .env.local)
+// VITE_XERO_CLIENT_ID=xxxxxxxx
+// VITE_XERO_REDIRECT_URI=https://yourapp.com/auth/callback
+const XERO_CLIENT_ID = import.meta.env.VITE_XERO_CLIENT_ID as string;
+const XERO_REDIRECT_URI = import.meta.env.VITE_XERO_REDIRECT_URI as string;
+
+// Adjust scopes to whatever your app actually needs.
+// offline_access is required to get a refresh token back.
+const XERO_SCOPES = [
+  "openid",
+  "profile",
+  "email",
+  "accounting.invoices"
+].join(" ");
+
+function buildXeroAuthorizeUrl() {
+  // Basic CSRF protection: generate a state value and verify it in the callback.
+  const state = crypto.randomUUID();
+  sessionStorage.setItem("xero_oauth_state", state);
+
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: XERO_CLIENT_ID,
+    redirect_uri: XERO_REDIRECT_URI,
+    scope: XERO_SCOPES,
+    state,
+  });
+
+  return `https://login.xero.com/identity/connect/authorize?${params.toString()}`;
+}
+
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) navigate({ to: "/dashboard", replace: true });
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session) navigate({ to: "/dashboard", replace: true });
-    });
-    return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `${window.location.origin}/dashboard` },
-        });
-        if (error) throw error;
-        toast.success("Account created. Check your email if confirmation is required.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
+  function handleXeroSignIn() {
+    if (!XERO_CLIENT_ID || !XERO_REDIRECT_URI) {
+      toast.error("Xero sign-in isn't configured yet. Missing client ID or redirect URI.");
+      return;
     }
+    setRedirecting(true);
+    window.location.href = buildXeroAuthorizeUrl();
   }
 
   return (
@@ -66,65 +76,23 @@ function AuthPage() {
         </Link>
 
         <div className="rounded-2xl border border-border bg-card p-8">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Welcome</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "signin"
-              ? "Sign in to your FlowSync dashboard."
-              : "Start unifying your entities in minutes."}
+            Sign in to your FlowSync dashboard with your Xero account.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                placeholder="you@company.com"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Password</label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                placeholder="••••••••"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
-            >
-              {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={handleXeroSignIn}
+            disabled={redirecting}
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+          >
+            {redirecting ? "Redirecting to Xero…" : "Sign in with Xero"}
+          </button>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            {mode === "signin" ? (
-              <>
-                No account?{" "}
-                <button className="font-medium text-foreground hover:underline" onClick={() => setMode("signup")}>
-                  Create one
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{" "}
-                <button className="font-medium text-foreground hover:underline" onClick={() => setMode("signin")}>
-                  Sign in
-                </button>
-              </>
-            )}
-          </div>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            You'll be redirected to Xero to authorize FlowSync, then brought back here.
+          </p>
         </div>
       </div>
     </div>
