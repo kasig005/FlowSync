@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TaxRouteImport } from './routes/tax'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as LegislationRouteImport } from './routes/legislation'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -20,6 +21,11 @@ import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 const TaxRoute = TaxRouteImport.update({
   id: '/tax',
   path: '/tax',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LegislationRoute = LegislationRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/legislation': typeof LegislationRoute
+  '/reports': typeof ReportsRoute
   '/tax': typeof TaxRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/connect': typeof AuthConnectRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/legislation': typeof LegislationRoute
+  '/reports': typeof ReportsRoute
   '/tax': typeof TaxRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/connect': typeof AuthConnectRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/legislation': typeof LegislationRoute
+  '/reports': typeof ReportsRoute
   '/tax': typeof TaxRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/auth_/connect': typeof AuthConnectRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/legislation'
+    | '/reports'
     | '/tax'
     | '/auth/callback'
     | '/auth/connect'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/legislation'
+    | '/reports'
     | '/tax'
     | '/auth/callback'
     | '/auth/connect'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/legislation'
+    | '/reports'
     | '/tax'
     | '/auth_/callback'
     | '/auth_/connect'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
   LegislationRoute: typeof LegislationRoute
+  ReportsRoute: typeof ReportsRoute
   TaxRoute: typeof TaxRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthConnectRoute: typeof AuthConnectRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/tax'
       fullPath: '/tax'
       preLoaderRoute: typeof TaxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/legislation': {
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
   LegislationRoute: LegislationRoute,
+  ReportsRoute: ReportsRoute,
   TaxRoute: TaxRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthConnectRoute: AuthConnectRoute,

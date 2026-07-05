@@ -19,12 +19,13 @@ import {
   SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Layers, LayoutDashboard, Receipt, MessageCircleQuestion, Link2, LogOut } from "lucide-react";
+import { Layers, LayoutDashboard, Receipt, MessageCircleQuestion, FileDown, Link2, LogOut } from "lucide-react";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/tax", label: "Tax", icon: Receipt },
   { to: "/legislation", label: "Legislation Assistant", icon: MessageCircleQuestion },
+  { to: "/reports", label: "Reports", icon: FileDown },
   { to: "/auth/connect", label: "Connect Xero", icon: Link2 },
 ] as const;
 
