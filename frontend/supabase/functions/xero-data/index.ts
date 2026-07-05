@@ -262,10 +262,15 @@ Deno.serve(async (req: Request) => {
         return Array.from(totals, ([currency, total]) => ({ currency, total }));
       };
 
-      const byCountryMap = new Map
-        TaxJurisdiction,
-        { entityCount: number; totalRevenue: number; totalNetProfit: number; totalEstimatedTaxOwed: number; currency: string }
-      >();
+      interface CountryAccumulator {
+        entityCount: number;
+        totalRevenue: number;
+        totalNetProfit: number;
+        totalEstimatedTaxOwed: number;
+        currency: string;
+      }
+
+      const byCountryMap = new Map<TaxJurisdiction, CountryAccumulator>();
       for (const e of validEntities) {
         const existing = byCountryMap.get(e.taxJurisdiction) ?? {
           entityCount: 0,
