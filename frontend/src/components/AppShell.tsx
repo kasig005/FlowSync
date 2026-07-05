@@ -19,7 +19,17 @@ import {
   SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Layers, LayoutDashboard, Receipt, MessageCircleQuestion, FileDown, TrendingUp, Link2, LogOut } from "lucide-react";
+import {
+  Layers,
+  LayoutDashboard,
+  Receipt,
+  MessageCircleQuestion,
+  FileDown,
+  TrendingUp,
+  Link2,
+  LogOut,
+  Settings,
+} from "lucide-react";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -27,6 +37,7 @@ const NAV_ITEMS = [
   { to: "/fx-trends", label: "Currency Trends", icon: TrendingUp },
   { to: "/legislation", label: "Legislation Assistant", icon: MessageCircleQuestion },
   { to: "/reports", label: "Reports", icon: FileDown },
+  { to: "/settings", label: "Xero Connections", icon: Settings },
   { to: "/auth/connect", label: "Connect Xero", icon: Link2 },
 ] as const;
 

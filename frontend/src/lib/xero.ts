@@ -68,9 +68,16 @@ export interface XeroSummary {
   };
 }
 
-async function invoke<T>(resource: string): Promise<T> {
+export interface XeroConnectionInfo {
+  id: string;
+  tenantId: string;
+  tenantType: string;
+  tenantName: string;
+}
+
+async function invoke<T>(resource: string, extra: Record<string, unknown> = {}): Promise<T> {
   const { data, error } = await supabase.functions.invoke("xero-data", {
-    body: { resource },
+    body: { resource, ...extra },
   });
   if (error) throw new Error(await extractFunctionErrorMessage(error));
   if (data?.error) throw new Error(data.error);
@@ -102,4 +109,7 @@ export const xero = {
   getOrganisation: () => invoke<{ Organisations: unknown[] }>("organisation"),
   getConsolidatedRevenue: () => invoke<ConsolidatedRevenue[]>("revenue"),
   getSummary: () => invoke<XeroSummary>("summary"),
+  getConnections: () => invoke<XeroConnectionInfo[]>("connections"),
+  disconnectConnection: (connectionId: string) =>
+    invoke<{ ok: true }>("disconnect", { connectionId }),
 };

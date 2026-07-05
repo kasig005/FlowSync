@@ -14,12 +14,14 @@ function formatPercent(value: number | null): string {
   return value === null ? "N/A" : `${(value * 100).toFixed(1)}%`;
 }
 
-// Hardcoded for now rather than trusting the live-fetched currency field in
-// the table's display column -- everything is GBP except India (INR).
-// Doesn't affect the actual conversion math elsewhere, which still uses the
-// real e.currency.
-function displayCurrencyLabel(tenantName: string): string {
-  return tenantName.toLowerCase().includes("india") ? "INR" : "GBP";
+// Use the entity's real currency (as reported by Xero's Organisation
+// endpoint) for display. Previously this guessed GBP/INR from the tenant
+// name string, which showed the wrong label for any non-UK, non-India
+// entity (e.g. a UAE or German org) even though the underlying conversion
+// math was always correct -- see Xero certification Checkpoint 7 (Data
+// Integrity), which requires displayed data to accurately reflect Xero.
+function displayCurrencyLabel(currency: string): string {
+  return currency;
 }
 
 export const Route = createFileRoute("/dashboard")({
@@ -50,7 +52,10 @@ function Dashboard() {
     return formatMoney(convert(amount, fromCurrency), displayCurrency);
   }
 
-  function displayCurrencyTotals(totals: CurrencyTotal[], emptyHint: string): { value: string; hint: string } {
+  function displayCurrencyTotals(
+    totals: CurrencyTotal[],
+    emptyHint: string,
+  ): { value: string; hint: string } {
     if (totals.length === 0) return { value: formatMoney(0, displayCurrency), hint: emptyHint };
     const total = totals.reduce((sum, t) => sum + convert(t.total, t.currency), 0);
     return { value: formatMoney(total, displayCurrency), hint: "" };
@@ -60,7 +65,9 @@ function Dashboard() {
     xero
       .getSummary()
       .then(setSummary)
-      .catch((err) => setSummaryError(err instanceof Error ? err.message : "Failed to load Xero data."));
+      .catch((err) =>
+        setSummaryError(err instanceof Error ? err.message : "Failed to load Xero data."),
+      );
   }, []);
 
   const entities = summary?.entities ?? [];
@@ -75,7 +82,10 @@ function Dashboard() {
         .reduce((best, e) => (e.grossMargin > best.grossMargin ? e : best))
     : null;
 
-  const totalRevenueConverted = entities.reduce((sum, e) => sum + convert(e.revenue, e.currency), 0);
+  const totalRevenueConverted = entities.reduce(
+    (sum, e) => sum + convert(e.revenue, e.currency),
+    0,
+  );
   const lossMakingEntities = entities.filter((e) => e.netProfit < 0);
 
   const kpiTiles = [
@@ -83,22 +93,34 @@ function Dashboard() {
       ? { title: "Consolidated Revenue", value: "—", hint: summaryError }
       : !summary
         ? { title: "Consolidated Revenue", value: "…", hint: "Loading from Xero…" }
-        : { title: "Consolidated Revenue", ...displayCurrencyTotals(summary.consolidated.revenue, "No revenue yet") },
+        : {
+            title: "Consolidated Revenue",
+            ...displayCurrencyTotals(summary.consolidated.revenue, "No revenue yet"),
+          },
     summaryError
       ? { title: "Consolidated Net Profit", value: "—", hint: summaryError }
       : !summary
         ? { title: "Consolidated Net Profit", value: "…", hint: "Loading from Xero…" }
-        : { title: "Consolidated Net Profit", ...displayCurrencyTotals(summary.consolidated.netProfit, "No profit data yet") },
+        : {
+            title: "Consolidated Net Profit",
+            ...displayCurrencyTotals(summary.consolidated.netProfit, "No profit data yet"),
+          },
     summaryError
       ? { title: "Consolidated Expenses", value: "—", hint: summaryError }
       : !summary
         ? { title: "Consolidated Expenses", value: "…", hint: "Loading from Xero…" }
-        : { title: "Consolidated Expenses", ...displayCurrencyTotals(summary.consolidated.expenses, "No expense data yet") },
+        : {
+            title: "Consolidated Expenses",
+            ...displayCurrencyTotals(summary.consolidated.expenses, "No expense data yet"),
+          },
     summaryError
       ? { title: "Total Cash Position", value: "—", hint: summaryError }
       : !summary
         ? { title: "Total Cash Position", value: "…", hint: "Loading from Xero…" }
-        : { title: "Total Cash Position", ...displayCurrencyTotals(summary.consolidated.cash, "No bank accounts found") },
+        : {
+            title: "Total Cash Position",
+            ...displayCurrencyTotals(summary.consolidated.cash, "No bank accounts found"),
+          },
     summaryError
       ? { title: "Estimated Tax Owed", value: "—", hint: summaryError }
       : !summary
@@ -112,13 +134,21 @@ function Dashboard() {
 
   const kpiValueSizeClass = moneySizeClassForGroup(
     kpiTiles.map((c) => c.value),
-    [[9, "text-3xl"], [13, "text-2xl"], [17, "text-xl"], [21, "text-lg"], [Infinity, "text-base"]],
+    [
+      [9, "text-3xl"],
+      [13, "text-2xl"],
+      [17, "text-xl"],
+      [21, "text-lg"],
+      [Infinity, "text-base"],
+    ],
   );
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16">
       <div className="rounded-2xl border border-border bg-card p-10">
-        <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dashboard</div>
+        <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Dashboard
+        </div>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight">Welcome to FlowSync 👋</h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
           Your consolidated multi-entity view, pulled live from every connected Xero organisation.
@@ -167,9 +197,7 @@ function Dashboard() {
                     </Tooltip>
                   )}
                 </div>
-                <div className={`mt-2 truncate font-semibold ${kpiValueSizeClass}`}>
-                  {c.value}
-                </div>
+                <div className={`mt-2 truncate font-semibold ${kpiValueSizeClass}`}>{c.value}</div>
                 {c.hint && <div className="mt-1 text-xs text-muted-foreground">{c.hint}</div>}
               </div>
             ))}
@@ -183,18 +211,26 @@ function Dashboard() {
                 <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Most Profitable Branch
                 </div>
-                <div className="mt-2 break-words text-2xl font-semibold">{mostProfitable?.tenantName}</div>
+                <div className="mt-2 break-words text-2xl font-semibold">
+                  {mostProfitable?.tenantName}
+                </div>
                 <div className="mt-1 break-words text-xs text-muted-foreground">
-                  {mostProfitable ? displayMoney(mostProfitable.netProfit, mostProfitable.currency) : "—"} net profit
+                  {mostProfitable
+                    ? displayMoney(mostProfitable.netProfit, mostProfitable.currency)
+                    : "—"}{" "}
+                  net profit
                 </div>
               </div>
               <div className="min-w-0 rounded-xl border border-border bg-background p-5">
                 <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Leanest Branch
                 </div>
-                <div className="mt-2 break-words text-2xl font-semibold">{leanest?.tenantName ?? "N/A"}</div>
+                <div className="mt-2 break-words text-2xl font-semibold">
+                  {leanest?.tenantName ?? "N/A"}
+                </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {leanest ? formatPercent(leanest.grossMargin) : "No Cost of Sales data"} gross margin
+                  {leanest ? formatPercent(leanest.grossMargin) : "No Cost of Sales data"} gross
+                  margin
                 </div>
               </div>
             </div>
@@ -230,14 +266,20 @@ function Dashboard() {
                               </span>
                             )}
                           </td>
-                          <td className="py-2 pr-4 text-muted-foreground">{displayCurrencyLabel(e.tenantName)}</td>
+                          <td className="py-2 pr-4 text-muted-foreground">
+                            {displayCurrencyLabel(e.currency)}
+                          </td>
                           <td className="py-2 pr-4">{displayMoney(e.revenue, e.currency)}</td>
-                          <td className={`py-2 pr-4 ${isLoss ? "font-medium text-destructive" : ""}`}>
+                          <td
+                            className={`py-2 pr-4 ${isLoss ? "font-medium text-destructive" : ""}`}
+                          >
                             {displayMoney(e.netProfit, e.currency)}
                           </td>
                           <td className="py-2 pr-4">{formatPercent(e.netMargin)}</td>
                           <td className="py-2 pr-4">{formatPercent(e.grossMargin)}</td>
-                          <td className="py-2 pr-4">{e.cash === null ? "N/A" : displayMoney(e.cash, e.currency)}</td>
+                          <td className="py-2 pr-4">
+                            {e.cash === null ? "N/A" : displayMoney(e.cash, e.currency)}
+                          </td>
                           <td className="py-2">{displayMoney(e.estimatedTaxOwed, e.currency)}</td>
                         </tr>
                       );
