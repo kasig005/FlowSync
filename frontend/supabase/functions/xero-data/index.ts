@@ -109,13 +109,16 @@ function estimateVatProximity(
   };
 }
 
-// --- Best-effort P&L / Balance Sheet report parsing -------------------
+// --- P&L / Balance Sheet report parsing -------------------------------
 // Xero's Reports endpoints return a nested Rows/Cells tree rather than flat
-// fields, and the exact row titles can vary slightly by report layout.
-// This looks for common row labels. Treat this as a starting point, not a
-// guaranteed-correct parser -- validate against real connected data,
-// per the open question already flagged in the project notes about
-// whether P&L parsing needs a dedicated transformer.
+// fields. Row labels ("Total Income", "Net Profit", "Total Bank") live in
+// Cells[0].Value on Row/SummaryRow entries, not in a `Title` field (Title
+// only exists on outer Section rows like "Income"). Confirmed working
+// against real connected Xero organisations (UK/Dubai demo companies).
+// Report layouts can still vary with tracking categories or multi-period
+// comparisons, so if a new org shows unexpected zeros, check the row
+// structure returned by the "organisation"/summary calls before assuming
+// the underlying data is actually empty.
 interface ReportRow {
   RowType?: string;
   Title?: string;
@@ -123,15 +126,21 @@ interface ReportRow {
   Rows?: ReportRow[];
 }
 
-function findRowValue(rows: ReportRow[] | undefined, titleMatch: RegExp): number | null {
+function findRowValue(rows: ReportRow[] | undefined, labelMatch: RegExp): number | null {
   if (!rows) return null;
   for (const row of rows) {
-    if (row.Title && titleMatch.test(row.Title) && row.Cells && row.Cells.length > 1) {
+    // The label Xero actually cares about here ("Total Income", "Net Profit",
+    // "Total Bank", etc.) lives in the first cell's Value for Row/SummaryRow
+    // entries -- e.g. Cells: [{ Value: "Total Income" }, { Value: "1234.56" }].
+    // The `Title` field only exists on outer Section rows ("Income", "Less
+    // Cost of Sales"), which don't carry a total of their own in Cells.
+    const label = row.Cells?.[0]?.Value ?? row.Title;
+    if (label && labelMatch.test(label) && row.Cells && row.Cells.length > 1) {
       const raw = row.Cells[row.Cells.length - 1].Value;
       const parsed = raw ? parseFloat(raw.replace(/,/g, "")) : NaN;
       if (!isNaN(parsed)) return parsed;
     }
-    const nested = findRowValue(row.Rows, titleMatch);
+    const nested = findRowValue(row.Rows, labelMatch);
     if (nested !== null) return nested;
   }
   return null;

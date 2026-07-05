@@ -107,8 +107,7 @@ Deno.serve(async (req: Request) => {
     if (!hashedToken) throw new XeroApiError("Failed to create session token.", 500);
 
     const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token: hashedToken,
+      token_hash: hashedToken,
       type: "magiclink",
     });
     if (verifyError || !verifyData.session) {

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TaxRouteImport } from './routes/tax'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as LegislationRouteImport } from './routes/legislation'
 import { Route as FxTrendsRouteImport } from './routes/fx-trends'
@@ -22,6 +23,11 @@ import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 const TaxRoute = TaxRouteImport.update({
   id: '/tax',
   path: '/tax',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/fx-trends': typeof FxTrendsRoute
   '/legislation': typeof LegislationRoute
   '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
   '/tax': typeof TaxRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/connect': typeof AuthConnectRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/fx-trends': typeof FxTrendsRoute
   '/legislation': typeof LegislationRoute
   '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
   '/tax': typeof TaxRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/connect': typeof AuthConnectRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/fx-trends': typeof FxTrendsRoute
   '/legislation': typeof LegislationRoute
   '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
   '/tax': typeof TaxRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/auth_/connect': typeof AuthConnectRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/fx-trends'
     | '/legislation'
     | '/reports'
+    | '/settings'
     | '/tax'
     | '/auth/callback'
     | '/auth/connect'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/fx-trends'
     | '/legislation'
     | '/reports'
+    | '/settings'
     | '/tax'
     | '/auth/callback'
     | '/auth/connect'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/fx-trends'
     | '/legislation'
     | '/reports'
+    | '/settings'
     | '/tax'
     | '/auth_/callback'
     | '/auth_/connect'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   FxTrendsRoute: typeof FxTrendsRoute
   LegislationRoute: typeof LegislationRoute
   ReportsRoute: typeof ReportsRoute
+  SettingsRoute: typeof SettingsRoute
   TaxRoute: typeof TaxRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthConnectRoute: typeof AuthConnectRoute
@@ -154,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/tax'
       fullPath: '/tax'
       preLoaderRoute: typeof TaxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   FxTrendsRoute: FxTrendsRoute,
   LegislationRoute: LegislationRoute,
   ReportsRoute: ReportsRoute,
+  SettingsRoute: SettingsRoute,
   TaxRoute: TaxRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthConnectRoute: AuthConnectRoute,
